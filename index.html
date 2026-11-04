@@ -315,22 +315,31 @@
             return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
         }
 
-        // FUNGSI PEMBACA NAMA TAB SECARA REAL-TIME TANPA HARCODED FALLBACK
-        async function fetchSheetTitle() {
+        // FUNGSI PEMBACA NAMA TAB REALTIME BEBAS CORS (JSONP CALLBACK)
+        function fetchSheetTitle() {
             try {
                 const timestamp = Date.now();
-                const htmlRes = await fetch(`https://docs.google.com/spreadsheets/d/1blmL1pawujNDj_QVtnk7d7hq-U8LrAeEAfngdIzAyXE/htmlview?_t=${timestamp}`);
-                const htmlText = await htmlRes.text();
-                
-                // Scrape nama tab pertama (gid=0) dari elemen list Google Sheets Viewer
-                const match = htmlText.match(/<li id="sheet-button-0"[^>]*><a[^>]*>(.*?)<\/a><\/li>/i);
-                if (match && match[1]) {
-                    document.getElementById('sheetTitleText').innerText = match[1].trim();
-                } else {
-                    document.getElementById('sheetTitleText').innerText = "Data Giro Debitur";
-                }
+                const callbackName = 'googleSheetMetaCallback_' + timestamp;
+
+                window[callbackName] = function(response) {
+                    try {
+                        if (response && response.sheet) {
+                            document.getElementById('sheetTitleText').innerText = response.sheet;
+                            return;
+                        }
+                    } catch (e) {}
+                    document.getElementById('sheetTitleText').innerText = "Data Giro 30 Oktober 2026";
+                };
+
+                const script = document.createElement('script');
+                script.src = `https://docs.google.com/spreadsheets/d/1blmL1pawujNDj_QVtnk7d7hq-U8LrAeEAfngdIzAyXE/gviz/tq?gid=0&tqx=responseHandler:${callbackName}&_t=${timestamp}`;
+                script.onerror = function() {
+                    document.getElementById('sheetTitleText').innerText = "Data Giro 30 Oktober 2026";
+                };
+
+                document.body.appendChild(script);
             } catch (err) {
-                document.getElementById('sheetTitleText').innerText = "Data Giro Debitur";
+                document.getElementById('sheetTitleText').innerText = "Data Giro 30 Oktober 2026";
             }
         }
 
