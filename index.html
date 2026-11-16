@@ -278,6 +278,9 @@
             }
         }
 
+        // GANTI DENGAN URL WEB APP APPS SCRIPT ANDA (BERAKHIRAN /exec)
+        const APPS_SCRIPT_URL = 'PASTE_URL_WEB_APP_APPS_SCRIPT_ANDA_DISINI';
+
         const BASE_GIRO_URL = 'https://docs.google.com/spreadsheets/d/1blmL1pawujNDj_QVtnk7d7hq-U8LrAeEAfngdIzAyXE/export?format=csv&gid=0';
         const BASE_AR_URL   = 'https://docs.google.com/spreadsheets/d/1blmL1pawujNDj_QVtnk7d7hq-U8LrAeEAfngdIzAyXE/export?format=csv&gid=471745175';
 
@@ -315,33 +318,37 @@
             return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
         }
 
-        // FUNGSI OTOMATIS: MENENTUKAN JUDUL SUMBER DATA LANGSUNG DARI TANGGAL TERAKHIR DATA GIRO
-        function updateDynamicSheetTitle() {
+        // FUNGSI REALTIME MEMBACA NAMA TAB ASLI DARI GOOGLE APPS SCRIPT
+        async function updateDynamicSheetTitle() {
             try {
-                if (!processedGiroData || processedGiroData.length === 0) {
-                    document.getElementById('sheetTitleText').innerText = "Data Giro Debitur";
+                if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('PASTE_URL')) {
+                    throw new Error('URL Apps Script belum dipasang');
+                }
+                const res = await fetch(`${APPS_SCRIPT_URL}?t=${Date.now()}`);
+                const data = await res.json();
+                if (data && data.sheetName) {
+                    document.getElementById('sheetTitleText').innerText = data.sheetName;
                     return;
                 }
-
-                // Mencari tanggal transaksi tolakan / data paling terbaru di spreadsheet
-                let maxDate = null;
-                processedGiroData.forEach(item => {
-                    if (item.parsedDate && (!maxDate || item.parsedDate > maxDate)) {
-                        maxDate = item.parsedDate;
-                    }
-                });
-
-                if (maxDate) {
-                    const monthNamesId = [
-                        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-                        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-                    ];
-                    const formattedTitle = `Data Giro ${maxDate.getDate()} ${monthNamesId[maxDate.getMonth()]} ${maxDate.getFullYear()}`;
-                    document.getElementById('sheetTitleText').innerText = formattedTitle;
-                } else {
-                    document.getElementById('sheetTitleText').innerText = "Data Giro Debitur";
-                }
             } catch (err) {
+                console.warn("Fallback ke tanggal data terbaru karena Apps Script belum siap:", err);
+            }
+
+            // Fallback otomatis jika Apps Script belum dipasang/gagal diakses
+            let maxDate = null;
+            processedGiroData.forEach(item => {
+                if (item.parsedDate && (!maxDate || item.parsedDate > maxDate)) {
+                    maxDate = item.parsedDate;
+                }
+            });
+
+            if (maxDate) {
+                const monthNamesId = [
+                    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+                ];
+                document.getElementById('sheetTitleText').innerText = `Data Giro ${maxDate.getDate()} ${monthNamesId[maxDate.getMonth()]} ${maxDate.getFullYear()}`;
+            } else {
                 document.getElementById('sheetTitleText').innerText = "Data Giro Debitur";
             }
         }
@@ -363,8 +370,8 @@
                 preProcessGiroData();
                 populateYearFilterOptions();
 
-                // Update judul sumber data secara dinamis berdasarkan data terbaru
-                updateDynamicSheetTitle();
+                // Panggil fungsi pembaca nama tab dari Apps Script
+                await updateDynamicSheetTitle();
 
                 const now = new Date();
                 const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
